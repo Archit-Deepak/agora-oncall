@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>On-call Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/static/oncall.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%233355d8'/><path d='M9 17l4 4 10-10' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+</head>
+<body>
+<div class="shell">
+  <aside class="nav">
+    <div class="brand"><span class="mark"></span>On-call Agent</div>
+    <nav>
+      <a href="#/" data-route="overview">Overview</a>
+      <a href="#/incident" data-route="incident">Live incident</a>
+      <a href="#/report" data-route="report">Incident report</a>
+      <a href="#/flow" data-route="flow">Call flow</a>
+      <a href="#/logs" data-route="logs">Call logs</a>
+      <a href="#/insights" data-route="insights">Insights</a>
+      <a href="#/accounts" data-route="accounts">Accounts</a>
+    </nav>
+    <div class="nav-foot">Simulated customer traffic.<br>The phone call is real.</div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="crumbs" id="crumbs"></div>
+      <div class="session" id="session"></div>
+    </header>
+    <div class="voicebar" id="voicebar" hidden></div>
+    <main id="view" class="view"></main>
+  </div>
+</div>
+<div class="notices" id="notices"></div>
+<script src="/static/oncall.js"></script>
+</body>
+</html>

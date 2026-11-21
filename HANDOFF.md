@@ -1,0 +1,70 @@
+# Handoff — state as of Sat 21 Nov 2026, ~11:00 IST (hackathon day)
+
+Read this first, then DIARY.md (history) and V2_SPEC.md (the v2 contract).
+
+## LATEST (main chat, ~11:45 IST) — read before anything else
+- **Domain live:** https://pagewhisper.me (+ www), Namecheap (student pack), A `@` → 52.231.69.243, CNAME `www` → pagewhisper.me. Note the spelling: pageWHISPER, no "r". Caddyfile host line is `pagewhisper.me, www.pagewhisper.me, 52-231-69-243.sslip.io {` (already installed on the VM). The sslip URL still works; `PUBLIC_BASE_URL` (Agora's LLM callback) is still the sslip URL, which is fine.
+- **Tester fork may still be running / just finished:** it built `scripts/sim_calls.py` (simulated calls through the voice proxy with the real LLMs, mock phone, invariant checks). Rerun with: start `INCIDENT_LIVE=0 MOCK_APPROVE_AFTER_S=0 .venv/bin/uvicorn app.console_app:app --port 8003` (and 8004), then `.venv/bin/python scripts/sim_calls.py --ports 8003,8004 [--only happy,garbled] [--json out.json]`. Results so far: round1 7/19 → round2 15/19 → round3 17/19. Fixed: "yeah do it" before a diagnosis applied the fix; misheard "compair the carriers"; 13.7 s silence when providers stall (now a voice deadline + holding line in app/llm.py); codes/IDs/UTC read aloud (TTS cleanup). Still open at round 3: (a) the voice states the investigator's LEADING (unverified) hypothesis as fact; fix it generally with a code guard; (b) acl_drop "open one of those call logs" is a dead end (no CDRs exist for blocked INVITEs) → should route to the call-flow map. **Hinglish is NOT a goal** (Archit): keep it only as a "doesn't break" check.
+- **NOT DEPLOYED YET:** the tester's changes (app/llm.py, brain_proxy.py, router.py, screen.py, tests) and possibly loop-in tweaks. Before deploying: `pytest tests -q` green, check `/public/status` busy == false, `bash deploy/snapshot.sh save pre-deploy`, `bash deploy/deploy.sh`, confirm the restart time, then a watch-session smoke test.
+- **Linear:** tickets land in team **Voice Platform Support (VPS)**, state **In Progress** (was Backlog → invisible in "Active"). The API key only sees the VPS team. VPS-1 is a real ticket from a real call; **VPS-2 is a test ticket (safe to delete)**. Member invites via the API are blocked on the free plan; if Archit invites `architagarkhed30+carrier@gmail.com`, `+am` and `+noc` via the Linear UI, loop-in subscribes them automatically (matched by email; roster in app/escalation.py: Rahul Menon / Neha Kapoor / NOC on-call).
+- **Telegram:** bot `@archit_incident_agent_bot` + chat verified reachable. The voice "send my Telegram a summary" has never been fired for real yet (real only for Archit's own number in public sessions).
+- **LLM vs rules (Archit cares a lot that the LLM really investigates, not hardcoded):** the random hidden fault → the LLM picks tools, hypothesises and concludes; code only verifies, fills hard facts (owner, cost, numbers, params), and falls back to rules after 45 s or if every LLM is down. Latest e2e: 5/6 found by the LLM. Possible knob: raise `DEADLINE_S` 45 → 60–75 s (Archit hasn't decided). Verify the LLM share again after the tester stops hammering the API keys (run `scripts/e2e_live.py all` a couple of times).
+- **Pending decisions for Archit (ask, don't assume):**
+  1. **Call security** (proposed, not built): runtime kill switch for calls; a Telegram alert on every call started with a "Block calls" button; tighter caps (6/hour, 12/day, 2 min between calls); a non-guessable access code instead of `AGORA26`; a spoken disclaimer "This is a demo call requested at pagewhisper.me"; optional allowlist mode. Today's guards: access code + wrong-code rate limit, Indian mobiles only, one call per number, 20/day, one session at a time, 5-min cap, admin token on operator routes.
+  2. **MCP server** (proposed, not built): expose the investigator tools + flow map + call details + report + safe actions (ticket / loop-in / Telegram; fixes stay voice-only) at `/mcp`, admin-token protected, for a Claude Desktop/Code demo. Track rubric lists "MCP-compatible integrations". Agora's native MCP/tools do NOT work with a custom LLM. Archit is asking another agent which MCPs to use; a briefing prompt was written for that.
+- **Archit's preferences:** short decisive answers; only build what clearly helps the demo; no idea lists he didn't ask for. Playwright is only used by the coding agent for testing, not in the product.
+- Old v1 server `app.incident_app` is still running on Archit's laptop (port 8001), harmless.
+
+## Hard rules
+- **Never run git commit / never `--no-verify`.** A commit tripped the company gitleaks hook → Slack alert to IT. No commits unless Archit explicitly asks (and run gitleaks manually first). Deploys go over rsync (`deploy/deploy.sh`), never git.
+- Never paste secrets into chat; keys live in `.env` (gitignored, also `.env.*`). Copy to the VM only with `deploy.sh --env` (chmod 600).
+- Fictional customer names only; all traffic is simulated with real Plivo/Zentrunk codes.
+- The VM is in **live mode** (`INCIDENT_LIVE=1`, Archit's call): public "Call me" dials real numbers. Never start a call session yourself; test with "watch" sessions + the voice proxy.
+- **Rollback without git:** `bash deploy/snapshot.sh save <label>` before a change, `… list`, `… restore .snapshots/<file>.tgz` (saves the current state first). Snapshots exclude .env, .venv, state/.
+
+## Where things stand
+- **Live:** https://pagewhisper.me (also https://52-231-69-243.sslip.io) — the console (light, sidebar pages): Overview (try-it form), Live incident (status, response-time chart, call transcript, investigation, resolution), **Incident report** (auto postmortem + Markdown download), **Call flow** (live leg-by-leg map + a failing call's SIP ladder), Call logs (filterable CDR table → per-call details with SIP sequence diagram), Insights (breakdowns with a computed conclusion), Accounts. Works on phones (390 px). CSS/JS URLs are versioned by mtime, so deploys are never hidden by browser caches.
+- **Real calls verified twice** on Archit's number (21 Nov): ring ~40 s after start, answer detection, /speak break-ins, voice-driven screen, approve → fix → verified recovery, 5-min cap.
+- **Operator console (old):** /console?token=ADMIN_TOKEN. Operator-only POSTs: /fleet, /incident, /demo, /public/stop.
+- **Tests: 153 passing** (`.venv/bin/python -m pytest tests -q`). **Live-LLM e2e:** `scripts/e2e_live.py all` → 6/6 PASS, 5/6 diagnosed by the LLM (silent_route sometimes falls back to rules under load: its verification needs a 60 s audio window).
+
+## Voice commands on the call (what the proxy understands)
+- Screen: "open one of those call logs" · "show me another one" · "show me their call flow" · "compare the carriers" · "show me only TATA" / "filter the failed calls" · "show me the incident report" · "go back".
+- Actions: "yes, go ahead / apply the fix" (approval; works before the found-it break-in too) · "no, not now" (keeps the proposal) · "make a Linear ticket" (files a ticket only; pop-up on the page) · "send my Telegram a summary" (real Telegram for Archit's own number; page pop-up for everyone) · "loop in the carrier team / account manager / everyone" (Linear labels + briefing comment + subscribers; app/escalation.py) · "I'm done" (goodbye).
+- Anything else → the investigator digs (break-in "On your question: …") or the voice answers from the case file.
+
+## Architecture (v2, what runs on the VM)
+- `app/console_app.py` — FastAPI app: `/` the console app (`web/oncall.*`), `/console` old operator console (`web/console.*`), `/public/start|status|stop`, `/v1/chat/completions` (Agora custom LLM), fleet/incident endpoints.
+- `app/public_demo.py` — judge sessions: access code (default `AGORA26`, `PUBLIC_ACCESS_CODE`), Indian mobiles only, one call per number (salted hash in `state/public.db`), daily caps (20 calls / 200 watches), one session at a time, wrong-code rate limit, 5-min call cap after answer (agent says goodbye, hangs up), 9-min session cap, random hidden fault from `FAULT_POOL` (phone-tier accounts), warm start (60 s healthy history), Telegram never pinged for public sessions. `ENGINEER_PHONE` / `PUBLIC_EXEMPT_NUMBERS` can call repeatedly.
+- `app/oncall.py` — orchestrator (spend tiers, confirm window, /speak break-ins, fix → verify → resolve, ticket/email/memory). Recovery now judged on the **signature's own hangup code stopping** (`verify.signature_cleared`) + overall rate < 12%, not a raw 6% bar (that bar was noise on low-volume accounts → the old 4590 "stall").
+- `app/investigator_agent.py` — triage pack in code → LLM tool loop → `conclude` must pass `app/verify.py`. Code owns the facts: owner comes from the playbook (LLM said "plivo" for cps_burst → corrected), fix must be valid for the signature (`verify.VALID_FIXES`), invented caller IDs / IPs replaced with real ones, costs from the playbook (`spoken_cost` for the phone), the phone always hears code-computed numbers (`verify.spoken`; the LLM's wording is kept as `detailed_summary`), and a reroute's destination comes from the verified route (the model once put the via-carrier there). LLM down → rules fallback immediately (not after the 45 s deadline).
+- `app/llm.py` — one priority chain. Investigator: **Azure gpt-5-mini → Azure gpt-4.1-mini → Groq gpt-oss-20b → qwen** (then rules). Voice: **Groq gpt-oss-120b, hedged with Azure gpt-4.1-mini** (if Groq has no first word in 1.2 s or 429s, Azure starts too; first to speak wins). Text cleaned for TTS (narrow no-break spaces etc.).
+- `app/context.py` — voice prompt; engineer name is per call (judge's name), "their customer" phrasing, ≤ 2 sentences / 35 words. `brain_proxy.SentenceCap` hard-stops replies after 2 sentences (the model once wrote the engineer's "yes" itself).
+- `app/screen.py` — voice → screen: keyword fast path + LLM planner over a fixed action whitelist; `resolve()` computes everything from CDRs; `flow_map()` locates the failure (carrier leg / at Zentrunk / IP allow-list / media). Events go to the page over SSE `/public/ui/stream` (also "notify" pop-ups).
+- `app/report.py` — postmortem from the case file + CDRs (impact, timeline, root cause, resolution, follow-ups, prevention). `/public/report`, `/public/report.md`, `/public/timeline`, `/public/flowmap`.
+- `app/escalation.py` — "loop in" (added from the main chat): Linear labels, briefing comment, subscribers.
+- `app/agora.py` — phone calls use `idle_timeout` 50 s (`AGORA_PHONE_IDLE_TIMEOUT`); browser/RTC agents 30 s.
+
+## Infra
+- **VM:** Azure for Students, `52.231.69.243`, Korea Central, 2 vCPU / 7.7 GB, Ubuntu 24.04, Python 3.12, IST. SSH `ssh -i ~/.ssh/agora_oncall_vm archit@52.231.69.243` (passwordless sudo). App in `/home/archit/agora-oncall`, systemd unit `agora-oncall` (uvicorn :8000), Caddy → HTTPS (`deploy/Caddyfile`, streaming unbuffered). Logs: `journalctl -u agora-oncall -f`, `/var/log/caddy/agora-oncall.log`. Region/quota limits: don't recreate the VM.
+- **Deploy:** `bash deploy/deploy.sh` (code + restart) · `--env` (also copies .env) · `--setup` (venv/unit/Caddy). VM-only switches in `deploy/vm.env` (PUBLIC_BASE_URL, INCIDENT_LIVE, MOCK_APPROVE_AFTER_S).
+- **Azure OpenAI:** resource `agora-oai-29532`, base `https://agora-oai-29532.openai.azure.com/`, deployments `gpt-5-mini` (api `2025-04-01-preview`) and `gpt-4.1-mini` (api `2024-10-21`); `2024-12-01-preview` 404s. Keys in .env.
+- **Measured:** Groq first word 350–610 ms from the VM; through the public HTTPS proxy from India ≈ 0.85 s. Azure gpt-4.1-mini 1.0–1.9 s; gpt-5-mini tool step ≈ 2.7 s.
+- Dropped by Archit: MongoDB, New Relic, ConfigCat, Sentry, Gemini, GitHub Models, Vercel.
+
+## Next steps (in order)
+1. Another real call to exercise the new pieces: call flow map, incident report by voice, Linear pop-up, Telegram summary, loop-in.
+2. Record the **backup video** (real call + the page).
+3. Optional: set `MANUAL_BASELINE_SECONDS` in .env to a timing Archit actually measured; the incident chart then shows "typical manual response" (left blank on purpose rather than invented).
+4. Confirm the access code and finalise SUBMISSION.md.
+5. After judging: delete the Azure resource group(s) `agora-hackathon` (VM + OpenAI).
+
+## Gotchas a fresh session would otherwise rediscover
+- **Agora (probed 21 Nov with `scripts/probe_agora.py`, no phone):** `GET agents/{id}` → RUNNING/STOPPED + `message` ("agent exits with reason: Idle for too long"); `/history` → `contents` (empty until someone speaks); `/speak` → 200; `/leave` on a stopped agent → 404 TaskNotFound. **idle_timeout counts before anyone joins** → must exceed the phone's ring time. Answered = first user turn at the proxy or a user entry in history; ended = STOPPED/404.
+- **Groq free tier:** only `openai/gpt-oss-120b`, `openai/gpt-oss-20b`, `qwen/qwen3.8-27b` work (8,000 TPM each). qwen tool calling breaks unless `reasoning_effort: "none"`.
+- **Fleet:** HA is already ON for Zylo and Medley, so `carrier_reject` only fits **Northwind**; `pbx_timeout` only Brightline (Telegram tier, not in the public pool). Fleet needs ~45 s healthy history before a fault → warm start (public_demo, e2e_live).
+- **Verify windows** are 30 s (silent 60 s); early LLM conclusions are often rejected by code (window half healthy) → agent waits and retries; rules fallback after `DEADLINE_S` (45 s).
+- **Tests compress scenario time** with `clock.advance()`; real-time waits patched small in `tests/test_oncall_v2.py`. `tests/conftest.py` opens operator auth for tests. Both apps bind the voice proxy at import time; fixtures re-bind.
+- **Phone path:** Agora `/call` → Plivo Zentrunk **US** org trunk (US caller ID avoids India 4590 anchoring) → Indian mobile. Credentials-only trunk auth. Body shape in `scripts/spike_s1_v2.py`.
+- Deploy: rsync occasionally ends with "unexpected end of file" over this link; the script then stops before the restart. Re-run `deploy.sh` and check `systemctl show agora-oncall -p ActiveEnterTimestamp`.
+- zsh `echo "$json"` mangles `\n` inside JSON — pipe curl straight into python when scripting.

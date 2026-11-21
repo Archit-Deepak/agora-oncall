@@ -1,0 +1,251 @@
+{
+ "incident_id": "INC-20261119-3",
+ "state": "CONFIRM_ACTIONS",
+ "account_id": "acct_northwind",
+ "alert": {
+  "incident_id": "INC-20261119-3",
+  "customer_name": "Northwind Health",
+  "account_id": "acct_northwind",
+  "failure_rate": 0.341,
+  "baseline_rate": 0.02,
+  "since": "2026-11-19T14:31:55",
+  "window_calls": 182,
+  "fired_at": "2026-11-19T14:32:40",
+  "signal": "failure_rate",
+  "signal_value": 0.341
+ },
+ "hypotheses": [
+  {
+   "id": "carrier_reject",
+   "title": "TATA rejecting calls (5350)",
+   "status": "confirmed",
+   "confidence": 0.96,
+   "reason": "58/62 failures are 5350 on TATA"
+  },
+  {
+   "id": "acl_drop",
+   "title": "Calls dropped at IP ACL",
+   "status": "ruled_out",
+   "confidence": 0.0,
+   "reason": "volume is 101% of normal"
+  },
+  {
+   "id": "cps_burst",
+   "title": "Dialer over CPS limit",
+   "status": "ruled_out",
+   "confidence": 0.0,
+   "reason": "peak 4 CPS vs limit 10"
+  }
+ ],
+ "evidence": [],
+ "leading": "carrier_reject",
+ "verdict": "confident",
+ "top_confidence": 0.96,
+ "calls": [
+  {
+   "attempt_id": "call-1",
+   "purpose": "initial",
+   "route": "agora_phone",
+   "placed_at": "2026-11-19T14:32:43",
+   "state": "answered",
+   "answered_at": "2026-11-19T14:32:58",
+   "verdict_told": "confident"
+  }
+ ],
+ "actions": [
+  {
+   "kind": "telegram_notice",
+   "status": "done",
+   "attempts": 1,
+   "external_id": null,
+   "external_url": null,
+   "error": null,
+   "payload": {
+    "text": "Northwind Health: fail rate 34% (₹682/h at risk). Calling on-call now."
+   }
+  },
+  {
+   "kind": "email_draft",
+   "status": "proposed",
+   "attempts": 0,
+   "external_id": null,
+   "external_url": null,
+   "error": null,
+   "payload": {
+    "body": "Hi Priya,\n\nBetween 14:31 and 14:33 IST about a third of Northwind's outbound reminder calls failed. The carrier TATA returned 503 'service unavailable' (Plivo hangup code 5350) for most calls routed through it; Airtel and Jio routes were unaffected.\n\nWe are enabling a High-Availability backup number on a second carrier so calls TATA refuses are retried automatically. This adds one India local number rental.\n\nWe'll confirm once failure rates are back to normal.\n\n— Plivo Support"
+   }
+  }
+ ],
+ "email_draft": null,
+ "milestones": {
+  "alert_at": "2026-11-19T14:32:40",
+  "call_placed_at": "2026-11-19T14:32:43",
+  "acknowledged_at": "2026-11-19T14:32:58",
+  "diagnosed_at": "2026-11-19T14:33:02",
+  "ticket_at": null,
+  "manual_baseline_seconds": 1500
+ },
+ "transcript": [
+  {
+   "role": "agent",
+   "text": "Hi Archit, this is the on-call agent. Northwind Health is failing 34% of calls — about ₹680 an hour at risk. I'm digging in now.",
+   "at": "2026-11-19T14:32:59",
+   "via": "speak"
+  },
+  {
+   "role": "engineer",
+   "text": "Okay, which carrier?",
+   "at": "2026-11-19T14:33:05"
+  },
+  {
+   "role": "agent",
+   "text": "Found it. TATA is refusing their calls with 503s; Airtel and Jio are fine. HA is off. I can enable an HA backup number — one extra number rental. Should I go ahead?",
+   "at": "2026-11-19T14:33:08",
+   "via": "speak"
+  },
+  {
+   "role": "engineer",
+   "text": "Is Jio affected too?",
+   "at": "2026-11-19T14:33:16"
+  },
+  {
+   "role": "agent",
+   "text": "No — Jio has 37 calls and one failure. Only TATA. Want me to enable HA?",
+   "at": "2026-11-19T14:33:22",
+   "via": "speak"
+  }
+ ],
+ "investigator_log": [
+  {
+   "at": "14:32:41",
+   "kind": "thought",
+   "text": "Investigation started — Northwind Health, failure_rate alert at 34%."
+  },
+  {
+   "at": "14:32:42",
+   "kind": "tool",
+   "tool": "overview",
+   "args": {
+    "account_id": "acct_northwind",
+    "window_s": 60
+   },
+   "result": "{\"calls\":182,\"expected\":180,\"volume_ratio\":1.01,\"fail_rate\":0.341,\"silent_rate\":0.01,\"top_causes\":{\"5350 service_unavailable_by_carrier\":57,\"4410 busy_line\":9},\"at_risk_inr_per_hour\":682}"
+  },
+  {
+   "at": "14:32:44",
+   "kind": "hypothesis",
+   "id": "carrier_reject",
+   "status": "open",
+   "confidence": 0.4,
+   "evidence": "5350 dominates failures; volume normal so not an ACL drop"
+  },
+  {
+   "at": "14:32:44",
+   "kind": "hypothesis",
+   "id": "cps_burst",
+   "status": "open",
+   "confidence": 0.15,
+   "evidence": "no 5180 seen yet; checking CPS profile"
+  },
+  {
+   "at": "14:32:46",
+   "kind": "tool",
+   "tool": "breakdown",
+   "args": {
+    "account_id": "acct_northwind",
+    "by": "carrier",
+    "only_failures": true
+   },
+   "result": "{\"TATA\":{\"calls\":81,\"failed\":58,\"fail_rate\":0.716},\"Airtel\":{\"calls\":64,\"failed\":3,\"fail_rate\":0.047},\"Jio\":{\"calls\":37,\"failed\":1,\"fail_rate\":0.027}}"
+  },
+  {
+   "at": "14:32:48",
+   "kind": "tool",
+   "tool": "cps_profile",
+   "args": {
+    "account_id": "acct_northwind"
+   },
+   "result": "{\"peak_cps\":4,\"p95_cps\":3,\"cps_limit\":10,\"count_5180\":0,\"pattern\":\"steady\"}"
+  },
+  {
+   "at": "14:32:49",
+   "kind": "hypothesis",
+   "id": "cps_burst",
+   "status": "ruled_out",
+   "confidence": 0.0,
+   "evidence": "peak 4 CPS vs limit 10, zero 5180s"
+  },
+  {
+   "at": "14:32:50",
+   "kind": "tool",
+   "tool": "account_profile",
+   "args": {
+    "account_id": "acct_northwind"
+   },
+   "result": "{\"plan\":\"Enterprise\",\"cps_limit\":10,\"ha_enabled\":false,\"caller_ids\":[\"+918047112233\"],\"media_region\":\"ap-south-1\",\"change_log\":[]}"
+  },
+  {
+   "at": "14:32:52",
+   "kind": "tool",
+   "tool": "search_kb",
+   "args": {
+    "query": "carrier 5350 failover India HA number"
+   },
+   "result": "[{\"doc\":\"ha_numbers.md\",\"section\":\"Why no automatic carrier failover in India\",\"snippet\":\"Numbers are tied to a carrier by regulation; HA rents a backup number on a different carrier and retries once on carrier fault.\"}]"
+  },
+  {
+   "at": "14:32:53",
+   "kind": "hypothesis",
+   "id": "carrier_reject",
+   "status": "leading",
+   "confidence": 0.78,
+   "evidence": "TATA 72% failing with 5350/503, Airtel+Jio under 5%; HA disabled"
+  },
+  {
+   "at": "14:32:55",
+   "kind": "verify",
+   "signature": "carrier_reject",
+   "ok": true,
+   "reason": "58/62 failures are 5350 on TATA; other carriers 3.7%",
+   "source": "llm"
+  },
+  {
+   "at": "14:32:55",
+   "kind": "finding",
+   "signature": "carrier_reject",
+   "summary": "TATA is refusing Northwind's calls with 503s. Airtel and Jio are fine. HA is off, so there is no backup number to retry on.",
+   "fix": "enable_ha",
+   "owner": "carrier"
+  },
+  {
+   "at": "14:33:21",
+   "kind": "answer",
+   "question_id": "q1",
+   "answer": "Jio is fine: 37 calls, 1 failure (2.7%). Only TATA is affected."
+  }
+ ],
+ "pending_questions": [
+  {
+   "id": "q1",
+   "text": "Is Jio affected too?",
+   "status": "answered",
+   "answer": "Jio is fine: 37 calls, 1 failure (2.7%).",
+   "at": "2026-11-19T14:33:16"
+  }
+ ],
+ "fixes": [
+  {
+   "signature": "carrier_reject",
+   "fix": "enable_ha",
+   "params": {},
+   "cost": "one extra India local number rental (HA backup number)",
+   "owner": "carrier",
+   "status": "proposed",
+   "spoken_summary": "TATA is refusing calls with 503s; enable an HA backup number on another carrier so refused calls retry.",
+   "evidence": "58/62 failures are 5350 on TATA; other carriers 3.7%",
+   "evidence_score": 0.92,
+   "source": "llm"
+  }
+ ],
+ "version": 41
+}

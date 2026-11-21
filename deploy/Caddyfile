@@ -1,0 +1,14 @@
+pagewhisper.me, www.pagewhisper.me, 52-231-69-243.sslip.io {
+	reverse_proxy 127.0.0.1:8000 {
+		flush_interval -1
+		transport http {
+			read_timeout 10m
+		}
+	}
+	log {
+		output file /var/log/caddy/agora-oncall.log {
+			roll_size 20mb
+			roll_keep 3
+		}
+	}
+}

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Incident Agent</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Incident Agent</h1>
+      <span id="status" class="badge idle">Idle</span>
+    </header>
+
+    <section class="call">
+      <div id="avatar" class="avatar">AI</div>
+      <div class="controls">
+        <button id="start">Start call</button>
+        <button id="mute" disabled>Mute</button>
+        <button id="hangup" class="danger" disabled>Hang up</button>
+      </div>
+      <p id="hint" class="hint">Allow microphone access when your browser asks.</p>
+    </section>
+
+    <section>
+      <h2>Turns through our proxy</h2>
+      <table>
+        <thead><tr><th>#</th><th>You said</th><th>Agent said</th><th>First token</th><th>Total</th></tr></thead>
+        <tbody id="turns"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="/static/vendor/AgoraRTC_N.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

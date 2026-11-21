@@ -1,0 +1,17 @@
+# Secrets. Never commit any of these. .env.example included: the company
+# gitleaks hook alerts Slack on *_API_KEY lines even when the value is empty.
+.env
+.env.*
+*.env
+
+state/
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+*.log
+
+.playwright-mcp/
+.snapshots/

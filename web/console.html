@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI On-Call Engineer — Console</title>
+  <script>
+    // Served by the backend at "/" or "/console" → assets live under /static/.
+    // Opened directly as .../console.html (static server or /static/) → relative paths work.
+    if (!/\.html$/.test(location.pathname)) document.write('<base href="/static/">');
+  </script>
+  <link rel="stylesheet" href="console.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span id="live-dot" class="dot"></span>
+      <h1>AI On-Call Engineer</h1>
+      <span id="fixture-tag" class="tag hidden">FIXTURE</span>
+    </div>
+    <div class="controls">
+      <button id="btn-start" class="primary">▶ Start fleet</button>
+      <button id="btn-stop">■ Stop</button>
+      <button id="btn-allpass" class="ok">✓ All calls pass</button>
+      <button id="btn-reset" class="ghost">Reset</button>
+    </div>
+    <div class="incident-head">
+      <span id="state-badge" class="badge">IDLE</span>
+      <span id="inc-id" class="muted">—</span>
+      <span id="inc-account" class="inc-account"></span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- 1. Accounts -->
+    <section class="col col-accounts">
+      <h2>Accounts <span class="muted small">ranked by spend</span></h2>
+      <div id="accounts"></div>
+    </section>
+
+    <!-- 2. Selected account: KPIs + CDR -->
+    <section class="col col-cdr card">
+      <div class="cdr-head">
+        <h2 id="cdr-title">Call logs</h2>
+        <span id="fleet-status" class="pill off">stopped</span>
+      </div>
+      <div id="kpis" class="kpis"></div>
+      <svg id="spark" class="spark" viewBox="0 0 600 90" preserveAspectRatio="none"></svg>
+      <div id="causes" class="causes"></div>
+      <div class="cdr-wrap">
+        <table class="cdr">
+          <thead><tr><th>Time</th><th>Call UUID</th><th>From</th><th>To</th><th>Carrier</th><th>To net</th><th>Dur</th><th>SIP</th><th>Hangup cause</th><th>Source</th><th>Energy</th></tr></thead>
+          <tbody id="cdr-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 3. Incident -->
+    <section class="col col-incident">
+      <div class="card stepper-card"><ol id="stepper" class="stepper"></ol></div>
+
+      <div class="card trace-card">
+        <h2>Investigator <span class="live-tag">live</span></h2>
+        <div id="trace" class="trace"></div>
+      </div>
+
+      <div class="row2">
+        <div class="card">
+          <h2>Hypotheses</h2>
+          <ul id="hypotheses" class="hyps"></ul>
+        </div>
+        <div class="card" id="fix-card">
+          <h2>Fix</h2>
+          <div id="fix"></div>
+        </div>
+      </div>
+
+      <div class="card call-card">
+        <div class="call-head">
+          <h2>Live call</h2>
+          <span id="call-state" class="call-state">no call</span>
+          <button id="btn-hangup" class="danger small-btn">Hang up</button>
+        </div>
+        <div id="transcript" class="transcript"></div>
+        <form id="ask-form" class="ask">
+          <input id="ask-input" type="text" placeholder="Ask the investigator… e.g. is Jio affected too?" autocomplete="off" />
+          <button type="submit">Ask</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Actions</h2>
+        <div id="actions" class="actions"></div>
+      </div>
+    </section>
+  </main>
+  <div id="toast" class="toast hidden"></div>
+  <script src="console.js"></script>
+</body>
+</html>

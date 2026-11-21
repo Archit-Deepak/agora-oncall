@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI On-Call Engineer — Incident Console</title>
+  <link rel="stylesheet" href="/static/dashboard.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <h1>AI On-Call Engineer</h1>
+    </div>
+    <div class="controls">
+      <button id="sim-start" class="primary">▶ Start simulation</button>
+      <button id="sim-stop">■ Stop simulation</button>
+      <button id="sim-pass" class="ok">✓ All calls pass</button>
+      <button id="sim-fail" class="bad">✕ All calls fail</button>
+      <button id="reset" class="ghost">Reset</button>
+      <button id="trigger" class="ghost" title="Scripted Northwind timeline (fallback)">Scripted run</button>
+    </div>
+  </header>
+
+  <section class="statusline">
+    <div><span class="label">Incident</span><span id="incident-id">—</span></div>
+    <div><span class="label">Customer</span><span id="customer">—</span></div>
+    <div><span class="label">State</span><span id="state-badge" class="badge">IDLE</span></div>
+    <div><span class="label">Failure rate</span><span id="failrate" class="big">—</span></div>
+  </section>
+
+  <div class="layout">
+  <section class="logs card">
+    <div class="logs-head">
+      <h2>Zentrunk call logs — Northwind Health <span class="muted">(outbound)</span></h2>
+      <span id="sim-status" class="pill sim-off">stopped</span>
+    </div>
+    <div class="kpis">
+      <div><span class="label">Failure rate · last 60s</span><span id="k-rate" class="kbig">—</span></div>
+      <div><span class="label">Calls · 60s</span><span id="k-calls" class="kmid">—</span></div>
+      <div><span class="label">Failed · 60s</span><span id="k-failed" class="kmid">—</span></div>
+      <div><span class="label">Alert threshold</span><span id="k-thr" class="kmid">20%</span></div>
+      <div><span class="label">Traffic</span><span id="k-mode" class="pill">—</span></div>
+    </div>
+    <svg id="spark" class="spark" viewBox="0 0 360 70" preserveAspectRatio="none"></svg>
+    <div class="carriers" id="carriers"></div>
+    <div class="causes" id="causes"></div>
+    <div class="cdr-wrap">
+      <table class="cdr">
+        <thead><tr><th>Initiated</th><th>Call UUID</th><th>From</th><th>To</th><th>Route</th>
+          <th>Dur</th><th>SIP</th><th>Hangup cause</th><th>Source</th></tr></thead>
+        <tbody id="cdr-body"><tr><td colspan="9" class="muted">Press “Start simulation” to begin streaming CDRs.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <main class="grid">
+    <div class="card" id="card-confidence">
+      <h2 id="conf-title">Confidence — carrier rejection</h2>
+      <div class="gauge">
+        <div class="gauge-fill" id="gauge-fill"></div>
+        <div class="gauge-threshold" style="left:85%"><span>85%</span></div>
+      </div>
+      <div class="conf-row">
+        <span id="conf-value" class="huge">0%</span>
+        <span id="verdict-pill" class="pill unsure">unsure</span>
+      </div>
+      <div id="conf-note" class="conf-note"></div>
+      <div class="history" id="conf-history"></div>
+    </div>
+
+    <div class="card" id="card-hypotheses">
+      <h2>Hypotheses</h2>
+      <ul id="hypotheses"></ul>
+    </div>
+
+    <div class="card" id="card-timeline">
+      <h2>Stage timer</h2>
+      <ul id="milestones">
+        <li data-k="alert_at"><span>Alert</span><b>—</b></li>
+        <li data-k="call_placed_at"><span>Call placed</span><b>—</b></li>
+        <li data-k="acknowledged_at"><span>Answered</span><b>—</b></li>
+        <li data-k="diagnosed_at"><span>Diagnosed</span><b>—</b></li>
+        <li data-k="ticket_at"><span>Ticket raised</span><b>—</b></li>
+      </ul>
+    </div>
+
+    <div class="card" id="card-call">
+      <h2>Live call</h2>
+      <div id="call-state" class="call-state">No active call</div>
+      <div id="call-detail" class="muted"></div>
+      <div id="transcript" class="transcript"></div>
+      <button id="hangup" class="ghost" style="margin-top:8px">Hang up call</button>
+    </div>
+
+    <div class="card" id="card-actions">
+      <h2>Actions</h2>
+      <div id="ticket-card" class="action muted">No ticket yet</div>
+      <h3>Customer email draft</h3>
+      <pre id="email-draft" class="email muted">—</pre>
+    </div>
+
+    <div class="card" id="card-evidence">
+      <h2>Evidence</h2>
+      <ul id="evidence"></ul>
+    </div>
+  </main>
+  </div>
+
+  <script src="/static/dashboard.js"></script>
+  <script src="/static/logs.js"></script>
+</body>
+</html>

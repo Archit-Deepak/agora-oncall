@@ -1,0 +1,19 @@
+[Unit]
+Description=Agora on-call agent (console + public demo + voice LLM proxy)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=archit
+WorkingDirectory=/home/archit/agora-oncall
+# Secrets come from .env (chmod 600). Values set here override .env (load_dotenv never overrides).
+# deploy/vm.env holds the VM-specific, non-secret switches (live mode, public URL, caps).
+EnvironmentFile=/home/archit/agora-oncall/deploy/vm.env
+ExecStart=/home/archit/agora-oncall/.venv/bin/uvicorn app.console_app:app --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips=127.0.0.1
+Restart=always
+RestartSec=3
+# one process only: all incident state lives in memory
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
