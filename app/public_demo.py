@@ -1,9 +1,10 @@
-"""Public demo: a judge enters an Indian mobile + access code and waits.
+"""Public demo: a judge enters an access code and waits.
 
-One session at a time. "call" mode saves their number, warm-starts 60 s of healthy traffic,
-and does not break anything. The phone rings only after the operator injects a fault on the
-console and it stays bad through the confirm window. "watch" mode still injects a hidden
-fault immediately and uses a mock phone (no call).
+One session at a time. "call" saves an Indian mobile and warm-starts 60 s of healthy traffic.
+"browser" does the same with no phone: when a failure holds, a window joins the agent over
+Agora RTC. Neither breaks anything. The phone rings, or the window connects, only after the
+operator injects a fault and it stays bad through the confirm window. "watch" still injects
+a hidden fault immediately and uses a mock phone (no call).
 
 Guards (all server-side):
   - access code (constant-time compare), wrong-code rate limit per IP
@@ -110,8 +111,8 @@ class PublicDemo:
     # ── start ──────────────────────────────────────────────────────────────
     async def start(self, mode: str, phone: str, code: str, name: str, ip: str,
                     force: str | None = None) -> tuple[int, dict]:
-        if mode not in ("call", "watch"):
-            return 400, {"error": "mode must be call or watch"}
+        if mode not in ("call", "browser", "watch"):
+            return 400, {"error": "mode must be call, browser, or watch"}
         if self._bad_code(ip):
             return 429, {"error": "Too many wrong codes from your network. Try again in an hour."}
         if not hmac.compare_digest((code or "").strip().upper().encode(), ACCESS_CODE.upper().encode()):
@@ -120,16 +121,21 @@ class PublicDemo:
         number = None
         if mode == "call":
             if not self.live_allowed:
-                return 503, {"error": "Live calls are switched off right now. Try 'Watch without a call'."}
+                return 503, {"error": "Live calls are switched off right now."}
             number = normalize_india_mobile(phone)
             if not number:
                 return 400, {"error": "Please enter an Indian mobile number (10 digits, starting 6-9)."}
             if not self._exempt(number):
                 if self._called_before(number):
-                    return 409, {"error": "This number has already had its demo call. Try 'Watch without a call'."}
+                    return 409, {"error": "This number has already had its demo call."}
                 day_ago = time.time() - 86400
                 if self._count_since("call", day_ago) >= DAILY_CALL_CAP:
-                    return 429, {"error": "Today's demo-call budget is used up. 'Watch without a call' still works."}
+                    return 429, {"error": "Today's demo-call budget is used up."}
+        elif mode == "browser":
+            if not self.live_allowed:
+                return 503, {"error": "Live calls are switched off right now."}
+            if self._count_since("browser", time.time() - 86400) >= DAILY_CALL_CAP:
+                return 429, {"error": "Today's browser-demo budget is used up."}
         elif self._count_since("watch", time.time() - 86400) >= DAILY_WATCH_CAP:
             return 429, {"error": "Daily demo limit reached. Please try again tomorrow."}
         name = re.sub(r"[^A-Za-z .'-]", "", name or "").strip()[:24] or "there"
@@ -148,7 +154,7 @@ class PublicDemo:
                 if force and ":" in force and tuple(force.split(":", 1)) in FAULT_POOL + [("acct_brightline", "pbx_timeout")]:
                     aid, fault = force.split(":", 1)
                 self._last_fault = (aid, fault)
-            waiting = mode == "call"
+            waiting = mode in ("call", "browser")
             self.session = {"id": sid, "mode": mode, "number": number, "name": name, "account": aid,
                             "fault": fault, "started_at": time.time(), "ended_at": None, "outcome": None,
                             "answered_at": None, "notes": [], "dialed": False, "waiting": waiting}
@@ -168,10 +174,14 @@ class PublicDemo:
         con = self._console()
         await console_app.reset()                      # hang up anything, stop loops, fresh state
         con = self._console()
-        con.live = mode == "call"
+        con.live = mode in ("call", "browser")
         con.reset()                                    # rebuild adapters for this mode
         if mode == "call" and hasattr(con.voice, "to_number"):
             con.voice.to_number = number
+        if mode == "browser":
+            from app import live_adapters
+            con.voice = live_adapters.AgoraBrowserCaller()
+            con.oncall.voice = con.voice
         # Public sessions never ping the operator's Telegram; notices are shown on the page instead.
         con.notifier = adapters.MockNotifier()
         con.oncall.notifier = con.notifier
@@ -197,7 +207,7 @@ class PublicDemo:
     def note_fault(self, account: str, fault: str | None) -> None:
         """Operator pressed Inject during an armed call. Remember what broke, for the report."""
         s = self.session
-        if not s or s.get("ended_at") or s.get("mode") != "call":
+        if not s or s.get("ended_at") or s.get("mode") not in ("call", "browser"):
             return
         if not fault or fault in ("none", "healthy"):
             return
@@ -243,7 +253,7 @@ class PublicDemo:
                             await con.oncall.hangup_active()
                         await self._end("resolved")
                         return
-                if cf.state is S.TELEGRAM_SENT and self.session["mode"] == "call":
+                if cf.state is S.TELEGRAM_SENT and self.session["mode"] in ("call", "browser"):
                     await self._end("call ended before the fix was approved")
                     return
                 if now - self.session["started_at"] > SESSION_MAX_S:
@@ -327,6 +337,11 @@ class PublicDemo:
             "milestones": {k: (v.isoformat() if hasattr(v, "isoformat") else v)
                            for k, v in cf.milestones.model_dump().items()},
         }
+        if (s.get("mode") == "browser" and not s.get("ended_at") and call
+                and call.state in ("ringing", "answered") and hasattr(con.voice, "join_info")):
+            info = con.voice.join_info()
+            if info:
+                out["voice"] = info
         st = con.fleet.stats(con.oncall.now(), window_s=60) if con.fleet.running or s.get("ended_at") else {"accounts": {}}
         out["accounts"] = [{"id": k, "name": v.get("name"), "spend": v.get("spend_per_day_inr"),
                             "fail_rate": v.get("fail_rate"), "silent_rate": v.get("silent_rate"),

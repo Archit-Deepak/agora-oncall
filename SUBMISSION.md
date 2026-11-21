@@ -5,12 +5,11 @@
 
 ## Try it (2 minutes)
 1. Open the link, enter your **Indian mobile number** and the access code, press **📞 Call me**.
-2. We break one simulated customer at random. Your phone rings in about 40 seconds from a US (+1) number.
+2. A high-spend customer starts failing. Your phone rings in about 15 seconds from a US (+1) number.
 3. Pick up: you're the on-call engineer. Ask it anything ("what's going on?", "is it only one carrier?", "whose fault is it?").
 4. When it finds the cause it proposes a fix and its cost. Say **"yes"**. It applies the fix, watches traffic and tells you the before → after.
 5. The page shows everything live: CDRs, the investigator's tool calls, code verification, the call transcript, the ticket and the customer email.
 
-Can't take a call? **▶ Watch without a call** runs the same incident with a simulated phone.
 Limits: 5-minute calls, one call per number, Indian mobiles only.
 
 ## What it is

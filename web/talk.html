@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Talk to the on-call agent</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<style>
+  :root { --bg: #f6f7f9; --surface: #fff; --text: #111827; --muted: #6b7280; --accent: #3355d8; --line: #e5e7eb; --bad: #b91c1c; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--text); font: 15px/1.5 Inter, -apple-system, sans-serif; display: grid; place-items: center; padding: 24px; }
+  main { width: min(360px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 28px 24px; text-align: center; }
+  h1 { font-size: 18px; font-weight: 600; margin: 14px 0 8px; }
+  p { color: var(--muted); margin: 0 0 18px; }
+  .orb { width: 72px; height: 72px; margin: 0 auto; border-radius: 50%; background: #eef2ff; color: var(--accent); display: grid; place-items: center; font-weight: 600; }
+  .orb.live { background: var(--accent); color: #fff; box-shadow: 0 0 0 8px #eef2ff; }
+  .orb.bad { background: #fef2f2; color: var(--bad); }
+  button { font: inherit; background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 10px 16px; font-weight: 600; cursor: pointer; }
+  button[disabled] { opacity: 0.45; cursor: default; }
+  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); margin-left: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="orb" id="orb">AI</div>
+  <h1 id="title">Waiting</h1>
+  <p id="detail">Keep this window open.</p>
+  <div>
+    <button id="retry" hidden type="button">Allow microphone</button>
+    <button id="hangup" type="button" disabled>Hang up</button>
+  </div>
+</main>
+<script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.22.0.js"></script>
+<script src="/static/talk.js"></script>
+</body>
+</html>

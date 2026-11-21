@@ -31,7 +31,7 @@ from app.store import IncidentStore
 WEB = Path(__file__).resolve().parent.parent / "web"
 STATE_DIR = Path(__file__).resolve().parent.parent / "state"
 LIVE = os.getenv("INCIDENT_LIVE", "0") == "1"
-CONFIRM_S = float(os.getenv("CONFIRM_S", "25"))
+CONFIRM_S = float(os.getenv("CONFIRM_S", "5"))
 CALL_MIN_SPEND = float(os.getenv("CALL_MIN_SPEND_INR", "20000"))
 RING_TIMEOUT_S = float(os.getenv("RING_TIMEOUT_S", "120"))
 STATUS_404_GRACE_S = 10.0
@@ -217,6 +217,26 @@ async def public_start(request: Request):
     code, payload = await public.start(str(body.get("mode", "call")), str(body.get("phone", "")),
                                        str(body.get("code", "")), str(body.get("name", "")), ip, force=force)
     return JSONResponse(payload, status_code=code)
+
+
+@app.get("/talk")
+async def talk_page():
+    """The browser-call window. Opened by a click so the browser allows it."""
+    from fastapi.responses import HTMLResponse
+    html = (WEB / "talk.html").read_text()
+    v = int((WEB / "talk.js").stat().st_mtime)
+    html = html.replace("/static/talk.js", f"/static/talk.js?v={v}")
+    return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
+
+
+@app.post("/public/voice/hangup")
+async def public_voice_hangup():
+    """The talk window closed the mic. Only ends a live browser session."""
+    s = public.session
+    if not s or s.get("ended_at") or s.get("mode") != "browser":
+        return JSONResponse({"ok": False}, status_code=409)
+    await public._console().oncall.hangup_active()
+    return {"ok": True}
 
 
 @app.get("/public/status")

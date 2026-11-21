@@ -10,12 +10,10 @@ All customers and call traffic are simulated. Field names and hangup codes are t
 ## Try it
 
 1. Open the site. Enter your name, an Indian mobile number, and the access code, then press **Call me**. That only puts you on the rotation. Nothing rings yet.
-2. When a high-spend account starts failing and stays failing, the phone rings about 40 seconds later, from a US number.
+2. When a high-spend account starts failing and stays failing, the phone rings about 15 seconds later, from a US number.
 3. Pick up. Ask what is going on, whether it is one carrier, and whose fault it is.
 4. When it proposes a fix, say **yes**. It applies the fix, watches the traffic, and tells you the before and after.
 5. The page shows the call records, the investigator's tool calls, the transcript, the ticket, and the customer email.
-
-**Watch without a call** runs the same incident with a simulated phone.
 
 Limits: Indian mobiles only, one call per number, five-minute calls.
 

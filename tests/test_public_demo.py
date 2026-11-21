@@ -59,6 +59,50 @@ def test_call_happy_path_then_one_call_per_number(demo):
     assert start(demo, phone="9123456789")[0] == 200
 
 
+def test_browser_arms_without_a_phone(demo):
+    code, body = start(demo, mode="browser", phone="")
+    assert code == 200 and body["waiting"] is True and body["mode"] == "browser"
+    mode, number, name, aid, fault = demo.booted[-1]
+    assert mode == "browser" and number is None and name == "Judge" and aid is None and fault is None
+    finish(demo)
+    assert start(demo, mode="browser", phone="")[0] == 200  # no one-number limit
+
+
+def test_browser_off_when_live_calls_are_off(demo):
+    demo.live_allowed = False
+    assert start(demo, mode="browser", phone="")[0] == 503
+
+
+def test_browser_caller_joins_a_channel_and_does_not_dial(monkeypatch):
+    from datetime import datetime
+
+    from app import live_adapters as L
+    from app.models import CallAttempt
+
+    seen = {}
+
+    async def fake_join(channel, greeting, idle_timeout=30):
+        seen["channel"] = channel
+        seen["idle"] = idle_timeout
+        return {"status_code": 200, "agent_id": "agent-1"}
+
+    async def fake_phone(*_a, **_k):
+        raise AssertionError("browser mode dialled a phone")
+
+    monkeypatch.setattr(L.agora, "start_agent", fake_join)
+    monkeypatch.setattr(L.agora, "place_phone_call", fake_phone)
+    monkeypatch.setattr(L.agora, "rtc_token", lambda channel, uid, ttl_s=3600: "tok")
+    monkeypatch.setattr(L.config, "AGORA_APP_ID", "app")
+    monkeypatch.setattr(L.config, "USER_UID", 1002)
+    caller = L.AgoraBrowserCaller()
+    attempt = CallAttempt(attempt_id="att-abc", purpose="initial", route="agora_rtc", placed_at=datetime.now())
+    agent_id = asyncio.run(caller.place_call(attempt, "hi"))
+    assert agent_id == "agent-1"
+    assert seen == {"channel": "brw-att-abc", "idle": 90}
+    info = caller.join_info()
+    assert info == {"app_id": "app", "channel": "brw-att-abc", "uid": 1002, "token": "tok"}
+
+
 def test_watch_still_injects_a_fault(demo):
     assert start(demo, mode="watch", phone="")[0] == 200
     _mode, _number, _name, aid, fault = demo.booted[-1]

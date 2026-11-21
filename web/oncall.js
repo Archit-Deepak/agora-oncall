@@ -79,7 +79,8 @@ function renderSession() {
   const se = s.session;
   const label = se.ended ? (se.outcome === "resolved" ? "Resolved" : "Ended") : (STATE_LABEL[s.state] || s.state);
   const dot = se.ended ? (se.outcome === "resolved" ? "ok" : "") : (["CALLING", "IN_CALL", "CONFIRM_ACTIONS", "UNSURE_TOLD"].includes(s.state) ? "live" : "busy");
-  el.innerHTML = `<span>${se.mode === "call" ? "Calling " + esc(se.number) : "Simulated phone"}</span>
+  const who = se.mode === "call" ? "Calling " + esc(se.number) : se.mode === "browser" ? "Browser" : "Simulated phone";
+  el.innerHTML = `<span>${who}</span>
     <span>${se.elapsed_s}s</span><span class="state"><span class="dot ${dot}"></span>${esc(label)}</span>`;
 }
 
@@ -147,11 +148,13 @@ function Overview() {
           <label class="field">Name (optional)<input id="f-name" maxlength="24" placeholder="Priya"></label>
           <label class="field">Indian mobile number<input id="f-phone" inputmode="tel" placeholder="98765 43210"></label>
           <label class="field">Access code<input id="f-code" placeholder="From the submission notes"></label>
-          <button class="btn primary" id="b-call" type="submit">Call me</button>
-          <button class="btn" id="b-watch" type="button">Watch without a call</button>
+          <div class="try-actions">
+            <button class="btn primary" id="b-call" type="submit">Get a real call</button>
+            <button class="btn primary" id="b-browser" type="button">Talk in the browser</button>
+          </div>
         </form>
         <div class="msg" id="f-msg"></div>
-        <p class="muted" style="margin:6px 0 0;font-size:13px">This puts you on the rotation. Nothing rings yet. When a high-spend account starts failing and stays failing, your phone rings about 40 seconds later. Pick up, ask what's going on, ask it to
+        <p class="muted" style="margin:6px 0 0;font-size:13px">Either button only puts you on the rotation. Nothing connects yet. When a high-spend account starts failing and stays failing, your phone rings, or the talk window connects, about 15 seconds later. Ask what's going on, ask it to
         open a call log or compare carriers, and say "yes" when it proposes the fix. Calls are limited to 5 minutes and one per number.</p>
       </div></div>
     <div class="card" style="margin-top:16px"><div class="card-h"><h2>How it works</h2></div><div class="card-b">
@@ -165,9 +168,12 @@ function Overview() {
       </ol></div></div>`;
   const msg = $("#f-msg");
   let inflight = false;
+  function armButtons(disabled) {
+    ["b-call", "b-browser"].forEach((id) => { const b = $("#" + id); if (b) b.disabled = disabled; });
+  }
   async function start(mode) {
     if (inflight) return; inflight = true;
-    $("#b-call").disabled = $("#b-watch").disabled = true;
+    armButtons(true);
     msg.className = "msg"; msg.textContent = "Starting…";
     try {
       const r = await fetch("/public/start", { method: "POST", headers: { "Content-Type": "application/json" },
@@ -176,14 +182,24 @@ function Overview() {
       if (!r.ok) { msg.className = "msg err"; msg.textContent = j.error || "Something went wrong."; if (j.busy) setTimeout(() => go("#/incident"), 1500); return; }
       msg.className = "msg ok";
       msg.textContent = j.waiting
-        ? `${j.number} is on the rotation. The phone stays quiet until a high-spend account is broken, then rings about 40 seconds later.`
+        ? (mode === "browser"
+          ? "This browser is on the rotation. Keep the talk window open. It connects about 15 seconds after a high-spend account starts failing. Allow the microphone when it asks."
+          : `${j.number} is on the rotation. The phone stays quiet until a high-spend account is broken, then rings about 15 seconds later.`)
         : (mode === "call" ? `Calling ${j.number} in about ${j.eta_s} seconds from a US number.` : "Started.");
       setTimeout(() => go("#/incident"), 900);
     } catch (e) { msg.className = "msg err"; msg.textContent = "Network error, please try again."; }
-    finally { setTimeout(() => { inflight = false; $("#b-call") && ($("#b-call").disabled = $("#b-watch").disabled = false); }, 2500); }
+    finally { setTimeout(() => { inflight = false; armButtons(false); }, 2500); }
   }
   $("#tryform").addEventListener("submit", (e) => { e.preventDefault(); start("call"); });
-  $("#b-watch").addEventListener("click", () => start("watch"));
+  $("#b-browser").addEventListener("click", () => {
+    const popup = window.open("/talk", "pagewhisper-talk", "popup,width=420,height=640");
+    if (!popup) {
+      msg.className = "msg err";
+      msg.textContent = "The browser blocked the talk window. Allow popups for this site, then press the button again.";
+      return;
+    }
+    start("browser");
+  });
 }
 
 function Incident(r, refresh) {
@@ -201,7 +217,7 @@ function Incident(r, refresh) {
   const f = inc.fix;
   view.innerHTML = `
     <div class="page-head"><div><h1>${esc(inc.account || "Waiting for an incident")}</h1>
-      <p>${se.waiting ? "Healthy traffic. The phone rings about 40 seconds after a high-spend account starts failing." : (inc.id ? esc(inc.id) + " · " : "") + (se.hidden_fault ? esc(FAULT_NAME[se.hidden_fault] || se.hidden_fault) : "Hidden fault: not identified yet")}</p></div>
+      <p>${se.waiting ? (se.mode === "browser" ? "Healthy traffic. The talk window connects about 15 seconds after a high-spend account starts failing." : "Healthy traffic. The phone rings about 15 seconds after a high-spend account starts failing.") : (inc.id ? esc(inc.id) + " · " : "") + (se.hidden_fault ? esc(FAULT_NAME[se.hidden_fault] || se.hidden_fault) : "Hidden fault: not identified yet")}${se.mode === "browser" && !ended ? ` <a href="/talk" target="pagewhisper-talk">Open the talk window</a>` : ""}</p></div>
       <span class="badge ${ended ? (se.outcome === "resolved" ? "ok" : "") : "info"}">${esc(ended ? (se.outcome === "resolved" ? "Resolved" : "Ended: " + se.outcome) : STATE_LABEL[state] || state)}</span></div>
     <div class="card"><div class="card-b">
       <div class="timeline">${STEPS.map(([k, l], i) => `<div class="${i < cur || (ended && state === "RESOLVED") ? "done" : i === cur ? "now" : ""}">${l}</div>`).join("")}</div>

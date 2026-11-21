@@ -83,8 +83,10 @@ def agent_properties(channel: str, greeting: str, idle_timeout: int = 30) -> dic
     }
 
 
-async def start_agent(channel: str, greeting: str) -> dict:
-    body = {"name": f"agent-{uuid.uuid4().hex[:12]}", "properties": agent_properties(channel, greeting)}
+async def start_agent(channel: str, greeting: str, idle_timeout: int = 30) -> dict:
+    """Join an RTC channel. The browser publishes as USER_UID; nobody is dialled."""
+    body = {"name": f"agent-{uuid.uuid4().hex[:12]}",
+            "properties": agent_properties(channel, greeting, idle_timeout=idle_timeout)}
     async with httpx.AsyncClient(timeout=20) as c:
         r = await c.post(f"{API}/join", json=body, headers={"Authorization": _AUTH})
     return {"status_code": r.status_code, **_json(r)}

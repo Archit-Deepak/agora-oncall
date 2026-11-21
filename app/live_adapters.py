@@ -47,6 +47,55 @@ class AgoraPhoneCaller:
             log.warning("agora speak -> %s", res.get("status_code"))
 
 
+# ── Voice: same agent, but the engineer talks in a browser window ────────────
+class AgoraBrowserCaller:
+    """Agora /join into an RTC channel. The page joins as USER_UID with a mic.
+
+    No SIP and no Plivo. place_call returns once the agent is in the channel;
+    the orchestrator still waits for the engineer to speak before marking the
+    call answered, same as the phone path.
+    """
+
+    route = "agora_rtc"
+    IDLE_S = 90
+
+    def __init__(self) -> None:
+        self.channel: str | None = None
+
+    def join_info(self) -> dict | None:
+        """Short-lived credentials for the browser. The app certificate stays on the server."""
+        if not self.channel:
+            return None
+        return {
+            "app_id": config.AGORA_APP_ID,
+            "channel": self.channel,
+            "uid": config.USER_UID,
+            "token": agora.rtc_token(self.channel, config.USER_UID),
+        }
+
+    async def place_call(self, attempt: CallAttempt, greeting: str) -> str:
+        channel = f"brw-{attempt.attempt_id}"
+        res = await agora.start_agent(channel, greeting, idle_timeout=self.IDLE_S)
+        agent_id = res.get("agent_id")
+        log.warning("agora /join %s -> %s %s", attempt.attempt_id, res.get("status_code"),
+                    agent_id or str(res)[:300])
+        if not agent_id:
+            raise RuntimeError(f"agora /join failed: {str(res)[:300]}")
+        self.channel = channel
+        return agent_id
+
+    async def hangup(self, attempt: CallAttempt) -> None:
+        self.channel = None
+        if attempt.agora_agent_id:
+            res = await agora.stop_agent(attempt.agora_agent_id)
+            log.warning("agora leave %s -> %s", attempt.agora_agent_id, res.get("status_code"))
+
+    async def speak(self, attempt: CallAttempt, text: str, priority: str = "APPEND") -> None:
+        if attempt.agora_agent_id:
+            res = await agora.speak(attempt.agora_agent_id, text, priority)
+            log.warning("agora speak -> %s", res.get("status_code"))
+
+
 # ── Tickets: Linear GraphQL ──────────────────────────────────────────────────
 LINEAR_URL = "https://api.linear.app/graphql"
 _PRIORITY = {"Urgent": 1, "High": 2, "Medium": 3, "Low": 4}
